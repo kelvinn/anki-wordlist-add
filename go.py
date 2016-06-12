@@ -43,20 +43,36 @@ def read_config():
 def showMyPreferencesDialog():
     PreferencesDialog()
 
-
 class PreferencesDialog(Frame):
 
     def __init__(self, *args, **kwargs):
         Frame.__init__(self, *args, **kwargs)
         window = Toplevel(self)
-        b = Button(window, text="Open new window", command=self.ok)
-        b.pack(side="top")
+        self.columnconfigure(2, pad=3)
+        self.rowconfigure(3, pad=3)
+
+
+        fvo_label = Label(window, text="Forvo API Key:", font=("Helvetica", 16), height=2)
+        fvo_label.grid(row=0, column=0, padx=3, sticky=W)
+
+        fvo_entry = Entry(window, width=50, font=("Helvetica", 16))
+        fvo_entry.grid(row=0, column=1, padx=3, sticky=W+E)
+
+        ms_label = Label(window, text="Microsoft Bing API Key:", font=("Helvetica", 16), height=2)
+        ms_label.grid(row=1, column=0, padx=3, sticky=W)
+
+        ms_entry = Entry(window, width=50, font=("Helvetica", 16))
+        ms_entry.grid(row=1, column=1, padx=3, sticky=W+E)
+
+        fvo_label = Label(window, text="SAVE", font=("Helvetica", 16), height=2)
+        fvo_label.grid(row=2, column=1, padx=3, sticky=W+E)
+
 
     def ok(self):
 
-        print "value is", self.e.get()
+        print "value is"
 
-        self.top.destroy()
+        self.destroy()
 
 
 class Example(Frame):
@@ -119,8 +135,8 @@ class Example(Frame):
         print img_names
         self.parent.title("Calculator")
         
-        Style().configure("TButton", padding=(0, 5, 0, 5), 
-            font='serif 10')
+        #Style().configure("TButton", padding=(0, 5, 0, 5),
+        #    font='serif 10')
 
         for col in xrange(self.COLS):
             self.columnconfigure(col, pad=3)
@@ -132,14 +148,30 @@ class Example(Frame):
         #    img_names.pop()
 
         entry = Entry(self)
-        entry.grid(row=0, columnspan=6, sticky=W+E)
         entry.insert(END, "Default")
 
-        test1 = Button(self, text="Sound 1", width=20)
-        test1.grid(row=1, column=0)
+        sound1 = Label(self, text="Chien", font=("Helvetica", 25), height=2)
+        sound1.grid(row=0, columnspan=6, sticky=W+E)
 
-        test2 = Button(self, text="Sound 2", width=20)
-        test2.grid(row=1, column=1)
+        sound1 = Label(self, text="Sound 1", font=("Helvetica", 16), height=2)
+        sound1.grid(row=1, column=0, padx=3, pady=3, sticky=W+E)
+
+        sound2 = Label(self, text="Sound 2", font=("Helvetica", 16), height=2)
+        sound2.grid(row=1, column=1, padx=3, pady=3, sticky=W+E)
+
+        sound3 = Label(self, text="Sound 3", font=("Helvetica", 16), height=2)
+        sound3.grid(row=1, column=2, padx=3, pady=3, sticky=W+E)
+
+        sound4 = Label(self, text="Sound 4", font=("Helvetica", 16), height=2)
+        sound4.grid(row=1, column=3, padx=3, pady=3, sticky=W+E)
+
+        sound5 = Label(self, text="Sound 5", font=("Helvetica", 16), height=2)
+        sound5.grid(row=1, column=4, padx=3, pady=3, sticky=W+E)
+
+        sound6 = Label(self, text="Sound 6", font=("Helvetica", 16), height=2)
+        sound6.grid(row=1, column=5, padx=3, pady=3, sticky=W+E)
+
+
 
 
         #Separator(self,orient=HORIZONTAL).grid(row=2, columnspan=5, sticky="ew")
@@ -154,14 +186,14 @@ class Example(Frame):
                     lbl = Label(self, image=tk_img, borderwidth=5, activebackground="red")
                     lbl.image = tk_img
                     lbl.bind("<Button-1>", self.do_image)
-                    lbl.grid(row=x, column=y)
+                    lbl.grid(row=x, column=y, padx=3, pady=3)
 
 
-        self.entry3.grid(row=5, columnspan=2, sticky=W+E)
-        self.entry3.insert(END, "Result")
+        skip_lbl = Label(self, text="SKIP", font=("Helvetica", 16), height=2)
+        skip_lbl.grid(row=5, column=4, padx=3, sticky=W+E)
 
-        test2 = Button(self, text="Next", width=20)
-        test2.grid(row=5, column=5)
+        next_lbl = Label(self, text="SAVE", font=("Helvetica", 16), height=2)
+        next_lbl.grid(row=5, column=5, padx=3, pady=3, sticky=W+E)
 
         self.pack()
 
@@ -171,9 +203,10 @@ def main():
 
     root = Tk()
     root.configure(background='gray')
-    root.resizable(0, 0)
+    #root.resizable(0, 0)
+    root.minsize(width=1024, height=550)
     root.createcommand('tk::mac::ShowPreferences', showMyPreferencesDialog)
-    root.geometry("1000x600")
+    root.geometry("1000x550")
     app = Example(root)
     root.mainloop()  
 
