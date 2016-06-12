@@ -2,14 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-ZetCode Tkinter tutorial
 
-In this script, we use the grid manager
-to create a skeleton of a calculator.
 
-Author: Jan Bodnar
-Last modified: November 2015
-Website: www.zetcode.com
 """
 
 from Tkinter import Tk, W, E, Toplevel, END, HORIZONTAL, INSERT, Radiobutton, DISABLED, ACTIVE, NORMAL
@@ -20,7 +14,8 @@ from Tkinter import Tk, Label, BOTH, LabelFrame, Canvas
 from ttk import Frame, Style
 import glob
 import os
-
+import ConfigParser
+from api import Word
 
 IMGPATH = 'imgs/'
 
@@ -29,19 +24,33 @@ def on_leave(event):
     #event.widget.configure(font="normal_font")
 
 
-class MyDialog:
+def read_config():
+    """Helper function to read a configuration file for api keys and etc
 
-    def __init__(self, parent):
+    :return: lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict
+    """
+    config = ConfigParser.ConfigParser(allow_no_value=True)
+    config.read('defaults.cfg')
+    lang = config.get('settings', 'lang')
+    output = config.get('settings', 'output')
+    forvo_api_key = config.get('settings', 'forvo_api_key')
+    pons_api_key = config.get('pons', 'api_key')
+    pons_lang = config.get('pons', 'lang')
+    pn_dict = config.get('pons', 'pn_dict')
+    microsoft_api_key = config.get('microsoft', 'api_key')
+    return lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key
 
-        top = self.top = Toplevel(parent)
+def showMyPreferencesDialog():
+    PreferencesDialog()
 
-        Label(top, text="Value").pack()
 
-        self.e = Entry(top)
-        self.e.pack(padx=5)
+class PreferencesDialog(Frame):
 
-        b = Button(top, text="OK", command=self.ok)
-        b.pack(pady=5)
+    def __init__(self, *args, **kwargs):
+        Frame.__init__(self, *args, **kwargs)
+        window = Toplevel(self)
+        b = Button(window, text="Open new window", command=self.ok)
+        b.pack(side="top")
 
     def ok(self):
 
@@ -63,8 +72,28 @@ class Example(Frame):
         self.COLS = 6
         self.initUI()
 
+    def new_window(self):
+        self.count += 1
+        id = "New window #%s" % self.count
+        window = Toplevel(self)
+        label = Label(window, text=id)
+        label.pack(side="top", fill="both", padx=10, pady=10)
+
     def do_image(self, event):
-        print(event.widget)
+        #lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key = read_config()
+        #word = 'chient'
+        #w = Word(word, lang, pn_dict, pons_api_key, forvo_api_key, output, microsoft_api_key)
+        #w.get_images()
+
+        if self.prev:
+            self.prev.configure(state=NORMAL)
+        self.prev = event.widget
+        event.widget.configure(state=ACTIVE)
+        self.selected_image = event.widget.cget("image")
+        self.entry3.delete(0, END)
+        self.entry3.insert(INSERT, str(self.selected_image))
+
+    def do_sound(self, event):
         if self.prev:
             self.prev.configure(state=NORMAL)
         self.prev = event.widget
@@ -79,6 +108,10 @@ class Example(Frame):
         for img in glob.glob(os.path.join(IMGPATH, '*.jpg')):
             img_names.append(img)
         return img_names
+
+    def new_window(self):
+        self.newWindow = Toplevel(self.master)
+        self.app = PreferencesDialog(self.newWindow)
 
 
     def initUI(self):
@@ -95,8 +128,8 @@ class Example(Frame):
         for row in xrange(self.ROWS):
             self.rowconfigure(row, pad=3)
 
-        while img_names:
-            img_names.pop()
+        #while img_names:
+        #    img_names.pop()
 
         entry = Entry(self)
         entry.grid(row=0, columnspan=6, sticky=W+E)
@@ -109,31 +142,37 @@ class Example(Frame):
         test2.grid(row=1, column=1)
 
 
-        bard = Image.open("imgs/DSC_0020.jpg")
-        bard.thumbnail((150,150),Image.ANTIALIAS)
-        bardejov = ImageTk.PhotoImage(bard)
-
         #Separator(self,orient=HORIZONTAL).grid(row=2, columnspan=5, sticky="ew")
 
         for x in xrange(2, self.ROWS):
             for y in xrange(0, self.COLS):
+                if img_names:
+                    filename = img_names.pop()
+                    img = Image.open(filename)
+                    img.thumbnail((150,150),Image.ANTIALIAS)
+                    tk_img = ImageTk.PhotoImage(img)
+                    lbl = Label(self, image=tk_img, borderwidth=5, activebackground="red")
+                    lbl.image = tk_img
+                    lbl.bind("<Button-1>", self.do_image)
+                    lbl.grid(row=x, column=y)
 
-                lbl = Label(self, image=bardejov, borderwidth=5, activebackground="red")
-                lbl.image = bardejov
-                lbl.bind("<Button-1>", self.do_image)
-                lbl.grid(row=x, column=y)
 
         self.entry3.grid(row=5, columnspan=2, sticky=W+E)
         self.entry3.insert(END, "Result")
+
+        test2 = Button(self, text="Next", width=20)
+        test2.grid(row=5, column=5)
 
         self.pack()
 
 
 def main():
-  
+
+
     root = Tk()
     root.configure(background='gray')
     root.resizable(0, 0)
+    root.createcommand('tk::mac::ShowPreferences', showMyPreferencesDialog)
     root.geometry("1000x600")
     app = Example(root)
     root.mainloop()  
