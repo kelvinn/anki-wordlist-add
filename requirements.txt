@@ -1,1 +1,4 @@
-py-bing-search
+git+https://github.com/tristantao/py-bing-search.git@54bb199cbbd6a7318580f20948879f9bbcb50a05#egg=py-bing-search
+requests
+Pillow
+beautifulsoup4

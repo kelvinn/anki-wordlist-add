@@ -11,7 +11,7 @@ __email__ = 'kelvin@kelvinism.com'
 
 import os
 import platform
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 import requests
 import logging
 from py_bing_search import PyBingImageSearch
@@ -38,9 +38,9 @@ class Word():
         :return:
         """
 
-        bing_image = PyBingImageSearch(self.microsoft_api_key, "x-box console") #image_filters is optional
-        first_fifty_result= bing_image.search(limit=50, format='json') #1-50
-        print (first_fifty_result[0].media_url)
+        bing_image = PyBingImageSearch(self.microsoft_api_key, self.word, image_filters='Size:small')
+        first_fifty_result= bing_image.search(limit=50, format='json')
+        return first_fifty_result
 
     def get_ipa(self):
         """Get IPA of a given word from the PONS API
@@ -68,10 +68,10 @@ class Word():
         if data:
             word_dict = {}
             try:
-                soup = BeautifulSoup(data[0]['hits'][0]['roms'][0]['headword_full'])
+                soup = BeautifulSoup(data[0]['hits'][0]['roms'][0]['headword_full'], "html.parser")
                 word_dict['ipa'] = soup.find('span', attrs={'class': 'phonetics'}).getString()
                 word_dict['wordclass'] = data[0]['hits'][0]['roms'][0]['wordclass']
-            except (KeyError, AttributeError) as e:
+            except (KeyError, AttributeError, TypeError) as e:
                 logging.info('Unable to get IPA for word %s' % self.word)
             return word_dict
 
