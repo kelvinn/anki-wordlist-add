@@ -7,7 +7,7 @@
 """
 
 from tkinter import Tk, W, E, Toplevel, END, TOP, HORIZONTAL, INSERT, Radiobutton, DISABLED, ACTIVE, NORMAL, PhotoImage
-from tkinter.ttk import Frame, Progressbar
+from tkinter.ttk import Frame
 from tkinter.ttk import Entry
 from PIL import Image, ImageTk
 from tkinter import Label
@@ -18,26 +18,11 @@ from configparser import ConfigParser
 from api import Word
 from io import BytesIO
 import threading
-import multiprocessing as mp
-import asyncio
 import grequests
-from time import sleep
-import threading
 import queue
-import time
 
 
 IMGPATH = 'imgs/'
-
-@asyncio.coroutine
-def coro():
-    print("hi")
-
-
-def on_leave(event):
-    print("success")
-    #event.widget.configure(font="normal_font")
-
 
 def read_config():
     """Helper function to read a configuration file for api keys and etc
@@ -54,6 +39,7 @@ def read_config():
     pn_dict = config.get('pons', 'pn_dict')
     microsoft_api_key = config.get('microsoft', 'api_key')
     return lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key
+
 
 def showMyPreferencesDialog():
     PreferencesDialog()
@@ -83,37 +69,11 @@ class PreferencesDialog(Frame):
         fvo_label = Label(window, text="SAVE", font=("Helvetica", 16), height=2)
         fvo_label.grid(row=2, column=1, padx=3, sticky=W+E)
 
-
     def ok(self):
 
         print("value is")
 
         self.destroy()
-
-@asyncio.coroutine
-def download_image(tk_obj, bing_image_obj, row, col):
-    print('downloading image')
-    try:
-        r = requests.get(bing_image_obj.media_url)
-        if r:
-            data = BytesIO(r.content)
-            img = Image.open(data)
-
-    except (UnicodeError, OSError, AttributeError):
-        pass
-
-    try:
-        if img:
-            img.thumbnail((150, 150),Image.ANTIALIAS)
-            tk_img = ImageTk.PhotoImage(img)
-
-            lbl = Label(tk_obj, image=tk_img, borderwidth=5, activebackground="red")
-            lbl.image = tk_img
-            lbl.bind("<Button-1>", tk_obj.do_image)
-            lbl.grid(row=row, column=col, padx=3, pady=3)
-            tk_obj.image_dict.update({lbl.cget('image'): img})
-    except IOError:
-        pass
 
 
 class ThreadedTask(threading.Thread):
@@ -124,9 +84,9 @@ class ThreadedTask(threading.Thread):
         self.row = row
         self.col = col
         self.queue = queue
+
     def run(self):
-        print("start threaded task")
-        print('downloading image')
+        img = None
         try:
             r = requests.get(self.bing_image_obj.media_url)
             if r:
@@ -138,7 +98,7 @@ class ThreadedTask(threading.Thread):
 
         try:
             if img:
-                img.thumbnail((150, 150),Image.ANTIALIAS)
+                img.thumbnail((150, 150), Image.ANTIALIAS)
                 tk_img = ImageTk.PhotoImage(img)
 
                 lbl = Label(self.tk_obj, image=tk_img, borderwidth=5, activebackground="red")
@@ -148,8 +108,8 @@ class ThreadedTask(threading.Thread):
                 self.tk_obj.image_dict.update({lbl.cget('image'): img})
         except IOError:
             pass
-        print("end threaded task")
         self.queue.put("Task finished")
+
 
 class WordGui(Frame):
   
@@ -157,7 +117,6 @@ class WordGui(Frame):
         Frame.__init__(self, parent)   
 
         self.words = ['chien', 'chat', 'lapin', 'couloir', "l'oeuf"]
-        self.entry3 = Entry(self)
         self.prev_image = None # previously select image / widget
         self.prev_audio = None # previously selected audio / widget
         self.selected_image = None
@@ -167,12 +126,10 @@ class WordGui(Frame):
         self.COLS = 6
         self.title = None
         self.save_lbl = Label()
-        self.loop = asyncio.get_event_loop()
         self.image_dict = {}
         self.queue = queue.Queue()
 
         self.initUI()
-
 
     def process_queue(self):
         try:
@@ -182,18 +139,11 @@ class WordGui(Frame):
             self.after(100, self.process_queue)
 
     def do_image(self, event):
-        #lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key = read_config()
-        #word = 'chient'
-        #w = Word(word, lang, pn_dict, pons_api_key, forvo_api_key, output, microsoft_api_key)
-        #w.get_images()
-
         if self.prev_image:
             self.prev_image.configure(state=NORMAL)
         self.prev_image = event.widget
         event.widget.configure(state=ACTIVE)
         self.selected_image = event.widget.cget('image')
-        #self.entry3.delete(0, END)
-        #self.entry3.insert(INSERT, str(self.selected_image))
 
     def do_sound(self, event):
         if self.prev_audio:
@@ -214,40 +164,6 @@ class WordGui(Frame):
         i.save('output.jpg')
 
         self.next_word()
-        #self.after(1,self.next_word)
-
-    def get_images(self):
-        urls = [url.media_url for url in self.images] # build list of URLs
-        #if len(urls) > (self.ROWS * self.COLS): # trim the list to the size of our grid
-        #    urls = urls[:self.ROWS * self.COLS]
-
-        rs = (grequests.get(u, timeout=0.5) for u in urls)
-
-        result = grequests.map(rs)
-
-        for x in range(2, self.ROWS):
-            for y in range(0, self.COLS):
-                if result:
-                    r = result.pop()
-                    try:
-                        if r:
-                            data = BytesIO(r.content)
-                            img = Image.open(data)
-
-                    except (UnicodeError, OSError):
-                        pass
-
-                    try:
-                        img.thumbnail((150, 150),Image.ANTIALIAS)
-                        tk_img = ImageTk.PhotoImage(img)
-
-                        lbl = Label(self, image=tk_img, borderwidth=5, activebackground="red")
-                        lbl.image = tk_img
-                        lbl.bind("<Button-1>", self.do_image)
-                        lbl.grid(row=x, column=y, padx=3, pady=3)
-                        self.image_dict.update({lbl.cget('image'): img})
-                    except IOError:
-                        pass
 
     def get_files(self):
         img_names = []
@@ -265,12 +181,8 @@ class WordGui(Frame):
     def next_word(self):
         word = self.words.pop()
 
-
         for label in self.grid_slaves():
             label.grid_forget()
-
-            #if int(label.grid_info()["row"]) > 6:
-            #    label.grid_forget()
 
         lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key = read_config()
         self.w = Word(word, lang, pn_dict, pons_api_key, forvo_api_key, output, microsoft_api_key)
@@ -288,31 +200,12 @@ class WordGui(Frame):
                 snd.bind("<Button-1>", self.do_sound)
                 snd.grid(row=1, column=num, padx=3, pady=3, sticky=W+E)
 
-        tasks = []
-        urls = []
-
-        """
         for x in range(2, self.ROWS):
             for y in range(0, self.COLS):
                 if self.images:
                     bing_image_obj = self.images.pop()
-                    tasks.append(download_image(self, bing_image_obj, x, y))
-                    tasks.append(asyncio.ensure_future(download_image(self, bing_image_obj, x, y)))
-                    urls.append(bing_image_obj.media_url)
-
-        self.after(1, self.get_images)
-        """
-
-        for x in range(2, self.ROWS):
-            for y in range(0, self.COLS):
-                if self.images:
-                    bing_image_obj = self.images.pop()
-
                     ThreadedTask(self, self.queue, bing_image_obj, x, y).start()
-                    self.after(100, self.process_queue)
-
-
-
+                    #self.after(100, self.process_queue)
 
         skip_lbl = Label(self, text="SKIP", font=("Helvetica", 16), height=2)
         skip_lbl.grid(row=5, column=4, padx=3, sticky=W+E)
@@ -336,14 +229,12 @@ class WordGui(Frame):
 
 
 def main():
-
-
     root = Tk()
     root.configure(background='gray')
     #root.resizable(0, 0)
     root.minsize(width=1024, height=700)
     root.createcommand('tk::mac::ShowPreferences', showMyPreferencesDialog)
-    root.geometry("1000x700")
+    root.geometry("1000x750")
     app = WordGui(root)
 
 
