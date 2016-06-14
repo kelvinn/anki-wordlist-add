@@ -11,18 +11,14 @@ from tkinter.ttk import Frame
 from tkinter.ttk import Entry
 from PIL import Image, ImageTk
 from tkinter import Label
-import glob
-import os
 import requests
 from configparser import ConfigParser
 from api import Word
 from io import BytesIO
 import threading
-import grequests
 import queue
 
 
-IMGPATH = 'imgs/'
 
 def read_config():
     """Helper function to read a configuration file for api keys and etc
@@ -52,7 +48,6 @@ class PreferencesDialog(Frame):
         window = Toplevel(self)
         self.columnconfigure(2, pad=3)
         self.rowconfigure(3, pad=3)
-
 
         fvo_label = Label(window, text="Forvo API Key:", font=("Helvetica", 16), height=2)
         fvo_label.grid(row=0, column=0, padx=3, sticky=W)
@@ -157,19 +152,11 @@ class WordGui(Frame):
         self.after(1, self.w.play(file_path))
 
     def do_save(self, event):
-        #img.save(filename, quality=90, optimize=True)
         self.save_lbl.config(text="WAIT...")
-
         i = self.image_dict[self.selected_image]
         i.save('output.jpg')
 
         self.next_word()
-
-    def get_files(self):
-        img_names = []
-        for img in glob.glob(os.path.join(IMGPATH, '*.jpg')):
-            img_names.append(img)
-        return img_names
 
     def new_window(self):
         self.newWindow = Toplevel(self.master)
