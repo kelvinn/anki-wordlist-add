@@ -6,24 +6,33 @@
 
 """
 
-from tkinter import Tk, W, E, Toplevel, END, HORIZONTAL, INSERT, Radiobutton, DISABLED, ACTIVE, NORMAL, PhotoImage
-from tkinter.ttk import Frame, Button, Style
-from tkinter.ttk import Entry, Separator
+from tkinter import Tk, W, E, Toplevel, END, TOP, HORIZONTAL, INSERT, Radiobutton, DISABLED, ACTIVE, NORMAL, PhotoImage
+from tkinter.ttk import Frame, Progressbar
+from tkinter.ttk import Entry
 from PIL import Image, ImageTk
-from tkinter import Tk, Label, BOTH, LabelFrame, Canvas
-from tkinter.ttk import Frame, Style
+from tkinter import Label
 import glob
 import os
 import requests
-import urllib
 from configparser import ConfigParser
 from api import Word
 from io import BytesIO
 import threading
 import multiprocessing as mp
+import asyncio
+import grequests
+from time import sleep
+import threading
+import queue
+import time
 
 
 IMGPATH = 'imgs/'
+
+@asyncio.coroutine
+def coro():
+    print("hi")
+
 
 def on_leave(event):
     print("success")
@@ -81,13 +90,73 @@ class PreferencesDialog(Frame):
 
         self.destroy()
 
+@asyncio.coroutine
+def download_image(tk_obj, bing_image_obj, row, col):
+    print('downloading image')
+    try:
+        r = requests.get(bing_image_obj.media_url)
+        if r:
+            data = BytesIO(r.content)
+            img = Image.open(data)
 
-class Example(Frame):
+    except (UnicodeError, OSError, AttributeError):
+        pass
+
+    try:
+        if img:
+            img.thumbnail((150, 150),Image.ANTIALIAS)
+            tk_img = ImageTk.PhotoImage(img)
+
+            lbl = Label(tk_obj, image=tk_img, borderwidth=5, activebackground="red")
+            lbl.image = tk_img
+            lbl.bind("<Button-1>", tk_obj.do_image)
+            lbl.grid(row=row, column=col, padx=3, pady=3)
+            tk_obj.image_dict.update({lbl.cget('image'): img})
+    except IOError:
+        pass
+
+
+class ThreadedTask(threading.Thread):
+    def __init__(self, tk_obj, queue, bing_image_obj, row, col):
+        threading.Thread.__init__(self)
+        self.tk_obj = tk_obj
+        self.bing_image_obj = bing_image_obj
+        self.row = row
+        self.col = col
+        self.queue = queue
+    def run(self):
+        print("start threaded task")
+        print('downloading image')
+        try:
+            r = requests.get(self.bing_image_obj.media_url)
+            if r:
+                data = BytesIO(r.content)
+                img = Image.open(data)
+
+        except (UnicodeError, OSError, AttributeError):
+            pass
+
+        try:
+            if img:
+                img.thumbnail((150, 150),Image.ANTIALIAS)
+                tk_img = ImageTk.PhotoImage(img)
+
+                lbl = Label(self.tk_obj, image=tk_img, borderwidth=5, activebackground="red")
+                lbl.image = tk_img
+                lbl.bind("<Button-1>", self.tk_obj.do_image)
+                lbl.grid(row=self.row, column=self.col, padx=3, pady=3)
+                self.tk_obj.image_dict.update({lbl.cget('image'): img})
+        except IOError:
+            pass
+        print("end threaded task")
+        self.queue.put("Task finished")
+
+class WordGui(Frame):
   
     def __init__(self, parent):
         Frame.__init__(self, parent)   
 
-        self.word = 'chien'
+        self.words = ['chien', 'chat', 'lapin', 'couloir', "l'oeuf"]
         self.entry3 = Entry(self)
         self.prev_image = None # previously select image / widget
         self.prev_audio = None # previously selected audio / widget
@@ -96,16 +165,21 @@ class Example(Frame):
         self.parent = parent
         self.ROWS = 5
         self.COLS = 6
-
+        self.title = None
+        self.save_lbl = Label()
+        self.loop = asyncio.get_event_loop()
         self.image_dict = {}
+        self.queue = queue.Queue()
 
-
-        lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key = read_config()
-        self.w = Word(self.word, lang, pn_dict, pons_api_key, forvo_api_key, output, microsoft_api_key)
-        self.audio_links = self.w.get_audio_links()
-        self.ipa = self.w.get_ipa()
-        self.images = self.w.get_images()
         self.initUI()
+
+
+    def process_queue(self):
+        try:
+            msg = self.queue.get(0)
+            # Show result of the task if needed
+        except queue.Empty:
+            self.after(100, self.process_queue)
 
     def do_image(self, event):
         #lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key = read_config()
@@ -134,57 +208,31 @@ class Example(Frame):
 
     def do_save(self, event):
         #img.save(filename, quality=90, optimize=True)
-        print(self.image_dict[self.selected_image])
+        self.save_lbl.config(text="WAIT...")
+
         i = self.image_dict[self.selected_image]
         i.save('output.jpg')
-        print(self.selected_audio)
 
-    def get_files(self):
-        img_names = []
-        for img in glob.glob(os.path.join(IMGPATH, '*.jpg')):
-            img_names.append(img)
-        return img_names
+        self.next_word()
+        #self.after(1,self.next_word)
 
-    def new_window(self):
-        self.newWindow = Toplevel(self.master)
-        self.app = PreferencesDialog(self.newWindow)
+    def get_images(self):
+        urls = [url.media_url for url in self.images] # build list of URLs
+        #if len(urls) > (self.ROWS * self.COLS): # trim the list to the size of our grid
+        #    urls = urls[:self.ROWS * self.COLS]
 
-    def demo_cmd(self):
-        print("success")
+        rs = (grequests.get(u, timeout=0.5) for u in urls)
 
-    def initUI(self):
-        self.parent.title("Calculator")
-
-
-        for col in range(self.COLS):
-            self.columnconfigure(col, pad=3)
-
-        for row in range(self.ROWS):
-            self.rowconfigure(row, pad=3)
-
-
-        word = Label(self, text=self.word, font=("Helvetica", 25), height=2)
-        word.grid(row=0, columnspan=6, sticky=W+E)
-
-        for num in range(0, self.COLS):
-            if num < len(self.audio_links):
-                audio_links = list(self.audio_links.items())
-                snd = Label(self, text=str(audio_links[num][0]), font=("Helvetica", 16), height=2)
-                snd.bind("<Button-1>", self.do_sound)
-                snd.grid(row=1, column=num, padx=3, pady=3, sticky=W+E)
-
-        #Separator(self,orient=HORIZONTAL).grid(row=2, columnspan=5, sticky="ew")
-
+        result = grequests.map(rs)
 
         for x in range(2, self.ROWS):
             for y in range(0, self.COLS):
-                if self.images:
-                    bing_image_obj = self.images.pop()
-
+                if result:
+                    r = result.pop()
                     try:
-                        r = requests.get(bing_image_obj.media_url)
-                        data = BytesIO(r.content)
-                        img = Image.open(data)
+                        if r:
+                            data = BytesIO(r.content)
+                            img = Image.open(data)
 
                     except (UnicodeError, OSError):
                         pass
@@ -201,29 +249,105 @@ class Example(Frame):
                     except IOError:
                         pass
 
+    def get_files(self):
+        img_names = []
+        for img in glob.glob(os.path.join(IMGPATH, '*.jpg')):
+            img_names.append(img)
+        return img_names
+
+    def new_window(self):
+        self.newWindow = Toplevel(self.master)
+        self.app = PreferencesDialog(self.newWindow)
+
+    def demo_cmd(self):
+        print("success")
+
+    def next_word(self):
+        word = self.words.pop()
+
+
+        for label in self.grid_slaves():
+            label.grid_forget()
+
+            #if int(label.grid_info()["row"]) > 6:
+            #    label.grid_forget()
+
+        lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key = read_config()
+        self.w = Word(word, lang, pn_dict, pons_api_key, forvo_api_key, output, microsoft_api_key)
+        self.audio_links = self.w.get_audio_links()
+        self.ipa = self.w.get_ipa()
+        self.images = self.w.get_images()
+
+        self.title = Label(self, text=word, font=("Helvetica", 25), height=2)
+        self.title.grid(row=0, columnspan=6, sticky=W+E)
+
+        for num in range(0, self.COLS):
+            if num < len(self.audio_links):
+                audio_links = list(self.audio_links.items())
+                snd = Label(self, text=str(audio_links[num][0]), font=("Helvetica", 16), height=2)
+                snd.bind("<Button-1>", self.do_sound)
+                snd.grid(row=1, column=num, padx=3, pady=3, sticky=W+E)
+
+        tasks = []
+        urls = []
+
+        """
+        for x in range(2, self.ROWS):
+            for y in range(0, self.COLS):
+                if self.images:
+                    bing_image_obj = self.images.pop()
+                    tasks.append(download_image(self, bing_image_obj, x, y))
+                    tasks.append(asyncio.ensure_future(download_image(self, bing_image_obj, x, y)))
+                    urls.append(bing_image_obj.media_url)
+
+        self.after(1, self.get_images)
+        """
+
+        for x in range(2, self.ROWS):
+            for y in range(0, self.COLS):
+                if self.images:
+                    bing_image_obj = self.images.pop()
+
+                    ThreadedTask(self, self.queue, bing_image_obj, x, y).start()
+                    self.after(100, self.process_queue)
+
 
 
 
         skip_lbl = Label(self, text="SKIP", font=("Helvetica", 16), height=2)
         skip_lbl.grid(row=5, column=4, padx=3, sticky=W+E)
 
-        next_lbl = Label(self, text="SAVE", font=("Helvetica", 16), height=2)
-        next_lbl.bind("<Button-1>", self.do_save)
-        next_lbl.grid(row=5, column=5, padx=3, pady=3, sticky=W+E)
+        self.save_lbl = Label(self, text="SAVE", font=("Helvetica", 16), height=2)
+        self.save_lbl.bind("<Button-1>", self.do_save)
+        self.save_lbl.grid(row=5, column=5, padx=3, pady=3, sticky=W+E)
 
         self.pack()
 
+    def initUI(self):
+        self.parent.title("Calculator")
+
+        for col in range(self.COLS):
+            self.columnconfigure(col, pad=3, minsize=170)
+
+        for row in range(self.ROWS):
+            self.rowconfigure(row, pad=3)
+
+        self.next_word()
+
 
 def main():
+
+
     root = Tk()
     root.configure(background='gray')
     #root.resizable(0, 0)
     root.minsize(width=1024, height=700)
     root.createcommand('tk::mac::ShowPreferences', showMyPreferencesDialog)
     root.geometry("1000x700")
-    app = Example(root)
-    root.mainloop()  
+    app = WordGui(root)
 
+
+    root.mainloop()
 
 if __name__ == '__main__':
-    main()  
+    main()

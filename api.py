@@ -38,7 +38,7 @@ class Word():
         :return:
         """
 
-        bing_image = PyBingImageSearch(self.microsoft_api_key, self.word, image_filters='Size:small')
+        bing_image = PyBingImageSearch(self.microsoft_api_key, self.word, image_filters='Size:small+Aspect:Wide')
         first_fifty_result= bing_image.search(limit=50, format='json')
         return first_fifty_result
 
@@ -149,4 +149,4 @@ class Word():
         if platform.system() == 'Linux':
             os.system('mpg123 -q %s' % file_name)
         else:
-            os.system('afplay %s' % file_name)
+            os.system('afplay %s &' % file_name)

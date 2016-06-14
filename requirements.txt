@@ -2,3 +2,4 @@ git+https://github.com/tristantao/py-bing-search.git@54bb199cbbd6a7318580f209488
 requests
 Pillow
 beautifulsoup4
+grequests
