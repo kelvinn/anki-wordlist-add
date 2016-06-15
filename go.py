@@ -6,7 +6,7 @@
 
 """
 
-from tkinter import Tk, W, E, Toplevel, END, TOP, HORIZONTAL, INSERT, Radiobutton, DISABLED, ACTIVE, NORMAL, PhotoImage
+from tkinter import filedialog, Tk, W, E, Toplevel, END, TOP, HORIZONTAL, INSERT, Radiobutton, DISABLED, ACTIVE, NORMAL, Menu, PhotoImage
 from tkinter.ttk import Frame
 from tkinter.ttk import Entry
 from PIL import Image, ImageTk
@@ -17,7 +17,7 @@ from api import Word
 from io import BytesIO
 import threading
 import queue
-
+import csv
 
 
 def read_config():
@@ -83,7 +83,7 @@ class ThreadedTask(threading.Thread):
     def run(self):
         img = None
         try:
-            r = requests.get(self.bing_image_obj.media_url)
+            r = requests.get(self.bing_image_obj['MediaUrl'])
             if r:
                 data = BytesIO(r.content)
                 img = Image.open(data)
@@ -105,13 +105,22 @@ class ThreadedTask(threading.Thread):
             pass
         self.queue.put("Task finished")
 
+def rewrite_word_list(words):
+    with open('output.csv', 'w') as csvfile:
+        writer = csv.writer(csvfile, delimiter=';',
+                                quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for word in words:
+            row = [word] + list(words[word].values())
+            writer.writerow(row)
 
 class WordGui(Frame):
   
     def __init__(self, parent):
         Frame.__init__(self, parent)   
 
-        self.words = ['chien', 'chat', 'lapin', 'couloir', "l'oeuf"]
+        #self.words = ['chien', 'chat', 'lapin', 'couloir', "l'oeuf"]
+        self.word_dict = {}
+        self.word_dict_out = {}
         self.prev_image = None # previously select image / widget
         self.prev_audio = None # previously selected audio / widget
         self.selected_image = None
@@ -123,6 +132,8 @@ class WordGui(Frame):
         self.save_lbl = Label()
         self.image_dict = {}
         self.queue = queue.Queue()
+        self.file_opt = options = {}
+
 
         self.initUI()
 
@@ -140,6 +151,22 @@ class WordGui(Frame):
         event.widget.configure(state=ACTIVE)
         self.selected_image = event.widget.cget('image')
 
+    def askopenfilename(self):
+        """Returns an opened file in read mode.
+        This time the dialog just returns a filename and the file is opened by your own code.
+        """
+        # get filename
+        filename = filedialog.askopenfilename(**self.file_opt)
+         # open file on your own
+        if filename:
+            with open(str(filename), 'r') as csvfile:
+                reader = csv.DictReader(csvfile)
+
+                for row in list(reader):
+                    self.word_dict[row['word']] = {'count': row['count']}
+                    self.word_dict_out[row['word']] = {'count': row['count']}
+        self.next_word()
+
     def do_sound(self, event):
         if self.prev_audio:
             self.prev_audio.configure(state=NORMAL)
@@ -149,35 +176,56 @@ class WordGui(Frame):
 
         file_path, file_name = self.w.download(self.audio_links[self.selected_audio])
 
+        self.downloaded_audio = file_name
         self.after(1, self.w.play(file_path))
+
+    def do_skip(self, event):
+        if len(self.word_dict) > 0:
+            self.next_word()
+        else:
+            rewrite_word_list(self.word_dict_out)
+            print("Should close")
 
     def do_save(self, event):
         self.save_lbl.config(text="WAIT...")
         i = self.image_dict[self.selected_image]
-        i.save('output.jpg')
+        i.save("imgs/" + str(self.current_word) + '.jpg')
 
-        self.next_word()
+        if self.ipa:
+            if 'ipa' in self.ipa.keys():
+                self.word_dict_out[self.current_word].update({'pronunciation': "[sound:%s]%s" % (self.downloaded_audio, str(self.ipa['ipa']))})
+            if 'wordclass' in self.ipa.keys():
+                self.word_dict_out[self.current_word].update({'wordclass': str(self.ipa['wordclass'])})
+            else:
+                self.word_dict_out[self.current_word].update({'wordclass': 'x'})
+        else:
+            self.word_dict_out[self.current_word].update({'pronunciation': "[sound:%s]" % self.downloaded_audio})
+
+        if len(self.word_dict) > 0:
+            self.next_word()
+        else:
+            rewrite_word_list(self.word_dict_out)
+            print("Should close")
 
     def new_window(self):
         self.newWindow = Toplevel(self.master)
         self.app = PreferencesDialog(self.newWindow)
 
-    def demo_cmd(self):
-        print("success")
 
     def next_word(self):
-        word = self.words.pop()
+
+        self.current_word = self.word_dict.popitem()[0]
 
         for label in self.grid_slaves():
             label.grid_forget()
 
         lang, output, forvo_api_key, pons_api_key, pons_lang, pn_dict, microsoft_api_key = read_config()
-        self.w = Word(word, lang, pn_dict, pons_api_key, forvo_api_key, output, microsoft_api_key)
+        self.w = Word(self.current_word, lang, pn_dict, pons_api_key, forvo_api_key, output, microsoft_api_key)
         self.audio_links = self.w.get_audio_links()
         self.ipa = self.w.get_ipa()
         self.images = self.w.get_images()
 
-        self.title = Label(self, text=word, font=("Helvetica", 25), height=2)
+        self.title = Label(self, text=self.current_word, font=("Helvetica", 25), height=2)
         self.title.grid(row=0, columnspan=6, sticky=W+E)
 
         for num in range(0, self.COLS):
@@ -194,8 +242,10 @@ class WordGui(Frame):
                     ThreadedTask(self, self.queue, bing_image_obj, x, y).start()
                     #self.after(100, self.process_queue)
 
-        skip_lbl = Label(self, text="SKIP", font=("Helvetica", 16), height=2)
-        skip_lbl.grid(row=5, column=4, padx=3, sticky=W+E)
+
+        self.skip_lbl = Label(self, text="SKIP", font=("Helvetica", 16), height=2)
+        self.skip_lbl.bind("<Button-1>", self.do_skip)
+        self.skip_lbl.grid(row=5, column=4, padx=3, sticky=W+E)
 
         self.save_lbl = Label(self, text="SAVE", font=("Helvetica", 16), height=2)
         self.save_lbl.bind("<Button-1>", self.do_save)
@@ -212,17 +262,31 @@ class WordGui(Frame):
         for row in range(self.ROWS):
             self.rowconfigure(row, pad=3)
 
-        self.next_word()
+        if len(self.word_dict) > 0:
+            self.next_word()
 
 
 def main():
+
     root = Tk()
     root.configure(background='gray')
     #root.resizable(0, 0)
     root.minsize(width=1024, height=700)
     root.createcommand('tk::mac::ShowPreferences', showMyPreferencesDialog)
     root.geometry("1000x750")
+
     app = WordGui(root)
+
+   # Menu
+    menubar = Menu(root)
+    root['menu'] = menubar
+    menu_file = Menu(menubar)
+    menu_edit = Menu(menubar)
+    menubar.add_cascade(menu=menu_file, label='File')
+    menubar.add_cascade(menu=menu_edit, label='Edit')
+    menu_file.add_command(label='New')
+    menu_file.add_command(label='Open...', command=app.askopenfilename)
+    menu_file.add_command(label='Close')
 
 
     root.mainloop()

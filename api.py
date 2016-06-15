@@ -38,9 +38,23 @@ class Word():
         :return:
         """
 
-        bing_image = PyBingImageSearch(self.microsoft_api_key, self.word, image_filters='Size:small+Aspect:Wide')
-        first_fifty_result= bing_image.search(limit=50, format='json')
-        return first_fifty_result
+        IMAGE_QUERY_BASE = 'https://api.datamarket.azure.com/Bing/Search/Image' \
+                     + '?Query={}&$top={}&$skip={}&$format={}&Market=%27fr-FR%27'
+        filters = requests.utils.quote("'{}'".format('Size:Medium+Aspect:Wide'))
+        response_format = 'json'
+        url = IMAGE_QUERY_BASE.format(requests.utils.quote("'{}'".format(self.word)), 50, 10, response_format)
+        r = requests.get(str(url), auth=("", self.microsoft_api_key))
+
+        try:
+            json_results = r.json()
+
+        except ValueError as vE:
+            pass
+
+        results = json_results['d']['results']
+        #bing_image = PyBingImageSearch(self.microsoft_api_key, self.word, image_filters='Size:Medium+Aspect:Wide')
+        #first_fifty_result= bing_image.search(limit=50, format='json')
+        return results
 
     def get_ipa(self):
         """Get IPA of a given word from the PONS API
@@ -69,14 +83,13 @@ class Word():
             word_dict = {}
             try:
                 soup = BeautifulSoup(data[0]['hits'][0]['roms'][0]['headword_full'], "html.parser")
-                word_dict['ipa'] = soup.find('span', attrs={'class': 'phonetics'}).getString()
+                word_dict['ipa'] = soup.find('span', attrs={'class': 'phonetics'}).getText()
                 word_dict['wordclass'] = data[0]['hits'][0]['roms'][0]['wordclass']
+                return word_dict
             except (KeyError, AttributeError, TypeError) as e:
                 logging.info('Unable to get IPA for word %s' % self.word)
-            return word_dict
 
-        else:
-            return None
+        return None
 
     def get_audio_links(self, ACT='word-pronunciations', FORMAT='mp3', free= True):
         """Get list of audio pronunciation links from Forvo
