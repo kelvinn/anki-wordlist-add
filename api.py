@@ -119,7 +119,7 @@ class Word():
 
         data = r.json()
 
-        if data[u'items']:
+        if 'items' in data:
             items = {}
             for i in data[u'items']:
                 audioFormat = u'path'+FORMAT

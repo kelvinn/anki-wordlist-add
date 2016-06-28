@@ -105,13 +105,15 @@ class ThreadedTask(threading.Thread):
             pass
         self.queue.put("Task finished")
 
+
 def rewrite_word_list(words):
     with open('output.csv', 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter=';',
+        writer = csv.writer(csvfile, delimiter=',',
                                 quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for word in words:
             row = [word] + list(words[word].values())
             writer.writerow(row)
+
 
 class WordGui(Frame):
   
@@ -163,8 +165,14 @@ class WordGui(Frame):
                 reader = csv.DictReader(csvfile)
 
                 for row in list(reader):
-                    self.word_dict[row['word']] = {'count': row['count']}
-                    self.word_dict_out[row['word']] = {'count': row['count']}
+                    self.word_dict[row['word']] = {}
+                    self.word_dict_out[row['word']] = {}
+
+                    for i in row:
+                        if str(i) is not 'word':
+                            self.word_dict[row['word']].update({i: row[i]})
+                            self.word_dict_out[row['word']].update({i: row[i]})
+
         self.next_word()
 
     def do_sound(self, event):
@@ -188,16 +196,27 @@ class WordGui(Frame):
 
     def do_save(self, event):
         self.save_lbl.config(text="WAIT...")
-        i = self.image_dict[self.selected_image]
-        i.save("imgs/" + str(self.current_word) + '.jpg')
+        if self.selected_image:
+            i = self.image_dict[self.selected_image]
+            f_name = str(self.current_word) + '.jpg'
+            img_filename = "imgs/" + f_name
+            i.save(img_filename)
+            self.word_dict_out[self.current_word].update({'picture': '<img src="%s" />' % f_name})
+
+        if self.selected_audio:
+            self.word_dict_out[self.current_word].update({'pronunciation': "[sound:%s]" % self.downloaded_audio})
+        else:
+            self.word_dict_out[self.current_word].update({'pronunciation': " "})
 
         if self.ipa:
             if 'ipa' in self.ipa.keys():
-                self.word_dict_out[self.current_word].update({'pronunciation': "[sound:%s]%s" % (self.downloaded_audio, str(self.ipa['ipa']))})
+                self.word_dict_out[self.current_word].update({'ipa': str(self.ipa['ipa'])})
+            else:
+                self.word_dict_out[self.current_word].update({'ipa': " "})
             if 'wordclass' in self.ipa.keys():
                 self.word_dict_out[self.current_word].update({'wordclass': str(self.ipa['wordclass'])})
             else:
-                self.word_dict_out[self.current_word].update({'wordclass': 'x'})
+                self.word_dict_out[self.current_word].update({'wordclass': ' '})
         else:
             self.word_dict_out[self.current_word].update({'pronunciation': "[sound:%s]" % self.downloaded_audio})
 
@@ -210,7 +229,6 @@ class WordGui(Frame):
     def new_window(self):
         self.newWindow = Toplevel(self.master)
         self.app = PreferencesDialog(self.newWindow)
-
 
     def next_word(self):
 
@@ -226,14 +244,26 @@ class WordGui(Frame):
         self.images = self.w.get_images()
 
         self.title = Label(self, text=self.current_word, font=("Helvetica", 25), height=2)
-        self.title.grid(row=0, columnspan=6, sticky=W+E)
+        self.title.grid(row=0, columnspan=4, sticky=W+E)
+
+        # We put the SKIP and SAVE buttons up here in case the audio/images fails
+        self.skip_lbl = Label(self, text="SKIP", font=("Helvetica", 25), height=2)
+        self.skip_lbl.bind("<Button-1>", self.do_skip)
+        self.skip_lbl.grid(row=0, column=4, padx=3, sticky=W+E)
+
+        self.save_lbl = Label(self, text="SAVE", font=("Helvetica", 25), height=2)
+        self.save_lbl.bind("<Button-1>", self.do_save)
+        self.save_lbl.grid(row=0, column=5, padx=3, pady=3, sticky=W+E)
+
 
         for num in range(0, self.COLS):
-            if num < len(self.audio_links):
-                audio_links = list(self.audio_links.items())
-                snd = Label(self, text=str(audio_links[num][0]), font=("Helvetica", 16), height=2)
-                snd.bind("<Button-1>", self.do_sound)
-                snd.grid(row=1, column=num, padx=3, pady=3, sticky=W+E)
+            if self.audio_links:
+                if num < len(self.audio_links):
+
+                    audio_links = list(self.audio_links.items())
+                    snd = Label(self, text=str(audio_links[num][0]), font=("Helvetica", 16), height=2)
+                    snd.bind("<Button-1>", self.do_sound)
+                    snd.grid(row=1, column=num, padx=3, pady=3, sticky=W+E)
 
         for x in range(2, self.ROWS):
             for y in range(0, self.COLS):
@@ -243,13 +273,7 @@ class WordGui(Frame):
                     #self.after(100, self.process_queue)
 
 
-        self.skip_lbl = Label(self, text="SKIP", font=("Helvetica", 16), height=2)
-        self.skip_lbl.bind("<Button-1>", self.do_skip)
-        self.skip_lbl.grid(row=5, column=4, padx=3, sticky=W+E)
 
-        self.save_lbl = Label(self, text="SAVE", font=("Helvetica", 16), height=2)
-        self.save_lbl.bind("<Button-1>", self.do_save)
-        self.save_lbl.grid(row=5, column=5, padx=3, pady=3, sticky=W+E)
 
         self.pack()
 
