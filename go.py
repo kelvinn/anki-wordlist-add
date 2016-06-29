@@ -83,7 +83,7 @@ class ThreadedTask(threading.Thread):
     def run(self):
         img = None
         try:
-            r = requests.get(self.bing_image_obj['MediaUrl'])
+            r = requests.get(self.bing_image_obj['thumbnailUrl'])
             if r:
                 data = BytesIO(r.content)
                 img = Image.open(data)

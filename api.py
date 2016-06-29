@@ -38,12 +38,14 @@ class Word():
         :return:
         """
 
-        IMAGE_QUERY_BASE = 'https://api.datamarket.azure.com/Bing/Search/Image' \
-                     + '?Query={}&$top={}&$skip={}&$format={}&Market=%27fr-FR%27'
+        IMAGE_QUERY_BASE = 'https://api.cognitive.microsoft.com/bing/v5.0/images/search' \
+                     + '?q={}&mkt=%27fr-FR%27'
+
         filters = requests.utils.quote("'{}'".format('Size:Medium+Aspect:Wide'))
         response_format = 'json'
-        url = IMAGE_QUERY_BASE.format(requests.utils.quote("'{}'".format(self.word)), 50, 10, response_format)
-        r = requests.get(str(url), auth=("", self.microsoft_api_key))
+        url = IMAGE_QUERY_BASE.format(requests.utils.quote("'{}'".format(self.word)))
+        headers = {'Ocp-Apim-Subscription-Key':  self.microsoft_api_key}
+        r = requests.get(str(url), headers=headers)
 
         try:
             json_results = r.json()
@@ -51,7 +53,7 @@ class Word():
         except ValueError as vE:
             pass
 
-        results = json_results['d']['results']
+        results = json_results['value']
         #bing_image = PyBingImageSearch(self.microsoft_api_key, self.word, image_filters='Size:Medium+Aspect:Wide')
         #first_fifty_result= bing_image.search(limit=50, format='json')
         return results
