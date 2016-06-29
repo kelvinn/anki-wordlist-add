@@ -49,11 +49,12 @@ class Word():
 
         try:
             json_results = r.json()
-
+            results = json_results['value']
         except ValueError as vE:
+            print(r.json())
+            results = None
             pass
 
-        results = json_results['value']
         #bing_image = PyBingImageSearch(self.microsoft_api_key, self.word, image_filters='Size:Medium+Aspect:Wide')
         #first_fifty_result= bing_image.search(limit=50, format='json')
         return results
@@ -93,7 +94,7 @@ class Word():
 
         return None
 
-    def get_audio_links(self, ACT='word-pronunciations', FORMAT='mp3', free= True):
+    def get_audio_links(self, ACT='word-pronunciations', FORMAT='mp3'):
         """Get list of audio pronunciation links from Forvo
 
         :param ACT:
