@@ -189,6 +189,8 @@ class WordGui(Frame):
 
     def do_skip(self, event):
         if len(self.word_dict) > 0:
+            self.selected_audio = None
+            self.selected_image = None
             self.next_word()
         else:
             rewrite_word_list(self.word_dict_out)
