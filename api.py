@@ -86,11 +86,17 @@ class Word():
             word_dict = {}
             try:
                 soup = BeautifulSoup(data[0]['hits'][0]['roms'][0]['headword_full'], "html.parser")
+                gender = soup.find('span', attrs={'class': 'genus'}).find('acronym')['title']
+                print(gender)
+
                 word_dict['ipa'] = soup.find('span', attrs={'class': 'phonetics'}).getText()
                 word_dict['wordclass'] = data[0]['hits'][0]['roms'][0]['wordclass']
+                word_dict['gender'] = soup.find('span', attrs={'class': 'genus'}).find('acronym')['title']
+
                 return word_dict
             except (KeyError, AttributeError, TypeError) as e:
                 logging.info('Unable to get IPA for word %s' % self.word)
+
 
         return None
 
@@ -117,10 +123,11 @@ class Word():
 
         try:
             r = requests.get(url)
+            data = r.json()
         except:
             return None
 
-        data = r.json()
+
 
         if 'items' in data:
             items = {}

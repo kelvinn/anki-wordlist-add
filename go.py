@@ -210,11 +210,17 @@ class WordGui(Frame):
         else:
             self.word_dict_out[self.current_word].update({'pronunciation': " "})
 
-        if self.ipa:
+        if self.ipa: # loop these
             if 'ipa' in self.ipa.keys():
                 self.word_dict_out[self.current_word].update({'ipa': str(self.ipa['ipa'])})
             else:
                 self.word_dict_out[self.current_word].update({'ipa': " "})
+
+            if 'gender' in self.ipa.keys():
+                self.word_dict_out[self.current_word].update({'gender': str(self.ipa['gender'])})
+            else:
+                self.word_dict_out[self.current_word].update({'gender': " "})
+
             if 'wordclass' in self.ipa.keys():
                 self.word_dict_out[self.current_word].update({'wordclass': str(self.ipa['wordclass'])})
             else:
