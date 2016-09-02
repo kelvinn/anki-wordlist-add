@@ -112,6 +112,7 @@ def rewrite_word_list(words):
                                 quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for word in words:
             row = [word] + list(words[word].values())
+
             writer.writerow(row)
 
 
@@ -196,7 +197,7 @@ class WordGui(Frame):
             rewrite_word_list(self.word_dict_out)
             print("Should close")
 
-    def do_save(self, event):
+    def do_save(self, event): # This is crazy messy. Focus here for improvement.
         self.save_lbl.config(text="WAIT...")
         if self.selected_image:
             i = self.image_dict[self.selected_image]
@@ -204,29 +205,27 @@ class WordGui(Frame):
             img_filename = "imgs/" + f_name
             i.save(img_filename)
             self.word_dict_out[self.current_word].update({'picture': '<img src="%s" />' % f_name})
+        else:
+            self.word_dict_out[self.current_word].update({'picture': "NaN"})
 
         if self.selected_audio:
             self.word_dict_out[self.current_word].update({'pronunciation': "[sound:%s]" % self.downloaded_audio})
         else:
-            self.word_dict_out[self.current_word].update({'pronunciation': " "})
+            self.word_dict_out[self.current_word].update({'pronunciation': "NaN"})
 
         if self.ipa: # loop these
             if 'ipa' in self.ipa.keys():
                 self.word_dict_out[self.current_word].update({'ipa': str(self.ipa['ipa'])})
             else:
-                self.word_dict_out[self.current_word].update({'ipa': " "})
+                self.word_dict_out[self.current_word].update({'ipa': "NaN"})
 
             if 'gender' in self.ipa.keys():
                 self.word_dict_out[self.current_word].update({'gender': str(self.ipa['gender'])})
             else:
-                self.word_dict_out[self.current_word].update({'gender': " "})
-
-            if 'wordclass' in self.ipa.keys():
-                self.word_dict_out[self.current_word].update({'wordclass': str(self.ipa['wordclass'])})
-            else:
-                self.word_dict_out[self.current_word].update({'wordclass': ' '})
+                self.word_dict_out[self.current_word].update({'gender': "NaN"})
         else:
-            self.word_dict_out[self.current_word].update({'pronunciation': "[sound:%s]" % self.downloaded_audio})
+            self.word_dict_out[self.current_word].update({'ipa': "NaN"})
+            self.word_dict_out[self.current_word].update({'gender': "NaN"})
 
         if len(self.word_dict) > 0:
             self.next_word()
